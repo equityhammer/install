@@ -1,0 +1,6 @@
+# Shell scripts must stay LF, even when checked out on Windows. CRLF breaks
+# the shebang and `bash <(curl ...)` at runtime.
+*.sh text eol=lf
+
+# PowerShell is fine either way; keep it CRLF-friendly on Windows.
+*.ps1 text eol=crlf
