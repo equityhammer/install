@@ -2,24 +2,50 @@
 
 Public install scripts for **Equity Hammer** clients.
 
-This repository holds the bootstrap scripts a new client runs to set up a fresh machine
-for the Equity Hammer agent stack. Everything here is public and safe to share; it contains
-no client data, secrets, or internal tooling, just the one-time setup scripts.
+This repository holds the bootstrap that sets up a fresh machine for the Equity Hammer
+agent stack. Everything here is public and safe to share; it contains no client data,
+secrets, or internal tooling, just the one-time setup.
+
+## Quick start - one command per platform
+
+There is a single entry point for each world. Each one auto-detects the rest.
+
+**Mac, or an already-open WSL/Ubuntu terminal:**
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/iamfoehammer/install/main/install.sh | bash
+```
+
+**Windows (paste into PowerShell):**
+
+```powershell
+irm https://raw.githubusercontent.com/iamfoehammer/install/main/install.ps1 | iex
+```
+
+Why two commands and not literally one: PowerShell has no `bash`, and a Mac has no
+PowerShell, so no single line runs in both shells. Instead, both funnel into the same
+place. `install.sh` detects macOS vs Linux and runs the right bootstrap. `install.ps1`
+sets up WSL if needed, then runs that same `install.sh` inside it. One brain, two front
+doors.
+
+## What happens
+
+- **`install.sh`** - detects the OS. macOS goes to `mac/bootstrap.sh`; Linux/WSL goes to
+  `wsl/bootstrap.sh`.
+- **`install.ps1`** - checks for WSL. If missing, offers `wsl --install` (needs admin +
+  a reboot), then asks the user to reboot, finish the Ubuntu username/password setup, and
+  paste the same line again. If WSL is ready, it hands off into the distro.
+- **`mac/bootstrap.sh`** and **`wsl/bootstrap.sh`** - the guided "Jarvis" setup: base
+  tooling, Claude Code, the standard project workspace, aliases, and (with confirmation)
+  Tailscale and OpenClaw. Idempotent, reads prompts from the terminal, stores no secrets,
+  pushes nothing.
 
 ## Layout
 
-- `mac/` - bootstrap script + instructions for a macOS machine (e.g. a Mac mini).
-- `wsl/` - bootstrap script + instructions for a Windows machine running Ubuntu under WSL2.
+- `install.sh` - universal Unix entry point (Mac + WSL).
+- `install.ps1` - universal Windows entry point (PowerShell).
+- `mac/` - the macOS bootstrap and its notes.
+- `wsl/` - the WSL/Ubuntu bootstrap and its notes.
 
-Pick the folder that matches the client's machine and follow its `README.md`.
-
-## What the bootstrap scripts do
-
-Each script gets a bare machine to a known-good starting point:
-
-1. Installs the base tooling (git, Node.js).
-2. Installs Claude Code.
-3. Creates the standard project workspace (`~/Claude Projects/` with `_archive/` and `_playground/`).
-4. Prints the next steps.
-
-The scripts are idempotent - safe to re-run. They never touch secrets and never push anything.
+You can still run a platform bootstrap directly if you already know which you want; see the
+per-folder README. The two commands above are the recommended path.

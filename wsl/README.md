@@ -1,44 +1,58 @@
 # WSL (Ubuntu) bootstrap
 
-Sets up a fresh Ubuntu WSL2 distro on a Windows machine for the Equity Hammer agent stack.
+The guided "Jarvis" setup for an Ubuntu WSL2 distro (or a plain Ubuntu box) as an Equity
+Hammer agent dev box.
+
+## Recommended: use the universal entry point
+
+**If you are on Windows and have not opened WSL yet**, paste this into PowerShell. It sets
+up WSL if needed, then runs the setup inside it:
+
+```powershell
+irm https://raw.githubusercontent.com/iamfoehammer/install/main/install.ps1 | iex
+```
+
+**If you already have a WSL/Ubuntu shell open**, use the universal Unix command (it
+auto-detects Linux and runs this script):
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/iamfoehammer/install/main/install.sh | bash
+```
+
+## Or run this bootstrap directly (from inside WSL)
+
+```bash
+bash <(curl -fsSL https://raw.githubusercontent.com/iamfoehammer/install/main/wsl/bootstrap.sh)
+```
 
 ## What it does
 
-1. Updates apt and installs base tooling (git, curl, build-essential).
-2. Installs Node.js (via NodeSource).
-3. Installs Claude Code (`@anthropic-ai/claude-code`).
-4. Creates the standard workspace at `~/Claude Projects/` with `_archive/` and `_playground/`.
-5. Prints the next steps.
+A narrated, step-by-step setup (every line prefixed with `Jarvis`), idempotent, with
+checkpoint/resume so a re-run can skip finished steps:
 
-The script is idempotent - re-running it skips anything already in place. It does not store
-secrets and does not push anything.
+1. apt update + base tooling (curl, git, build-essential, ca-certificates, tmux, perl).
+2. git user.name / user.email.
+3. SSH check - confirms you can `ssh <user>@localhost` from your Windows host.
+4. The standard `~/claudeProjects/` workspace and `~/.claude/CLAUDE.md`.
+5. The `cc-/cn-/dcc-/dcn-` project aliases (and `tcc-` tmux variants), with a daily
+   systemd user-timer auto-refresh.
+6. Tailscale (with confirmation) for SSH between your devices.
+7. Claude Code (Node via NodeSource + npm).
+8. OpenClaw (with confirmation).
+9. A PATH check across everything installed.
+
+It reads prompts from your terminal, stores no secrets, and pushes nothing.
 
 ## Prereqs
 
-- Windows with WSL2 installed and an Ubuntu distro (`wsl --install -d Ubuntu`).
-- Run this from **inside the WSL shell**, not from Windows PowerShell or Explorer.
-- An internet connection. Some steps use `sudo` and may prompt for your password.
-
-## Run it
-
-Open the Ubuntu shell, then download and review first:
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/iamfoehammer/install/main/wsl/bootstrap.sh -o bootstrap.sh
-less bootstrap.sh        # review before running
-bash bootstrap.sh
-```
-
-Or, once you trust it, in one line:
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/iamfoehammer/install/main/wsl/bootstrap.sh | bash
-```
+- Windows with WSL2, or a plain Ubuntu/Debian box. Run from **inside the WSL shell**, not
+  from Windows Explorer.
+- `sudo` access and an internet connection.
 
 ## After it finishes
 
-- Open a new WSL shell so the updated `PATH` takes effect.
+- Open a new WSL shell so PATH changes take effect (or run `source ~/.bashrc`).
 - Run `claude` once to log in.
-- Keep your projects in the Linux filesystem (`~/...`), not under `/mnt/c/...` (the Windows
-  drive is slow over the WSL bridge and breaks file watchers).
+- Keep projects in the Linux filesystem (`~/...`), not under `/mnt/c/...` (slow over the
+  WSL bridge and breaks file watchers).
 - Continue with the file-structure and configuration steps from your onboarding guide.

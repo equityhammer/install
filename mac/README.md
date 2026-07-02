@@ -1,41 +1,47 @@
 # macOS bootstrap
 
-Sets up a fresh macOS machine (e.g. a Mac mini) for the Equity Hammer agent stack.
+The guided "Jarvis" setup for a fresh Mac (e.g. a Mac mini) as an Equity Hammer agent
+dev box.
+
+## Recommended: use the universal entry point
+
+From the repo root command, which auto-detects macOS and runs this script:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/iamfoehammer/install/main/install.sh | bash
+```
+
+## Or run this bootstrap directly
+
+```bash
+bash <(curl -fsSL https://raw.githubusercontent.com/iamfoehammer/install/main/mac/bootstrap.sh)
+```
 
 ## What it does
 
-1. Installs Homebrew if it is missing.
-2. Installs git and Node.js via Homebrew.
-3. Installs Claude Code (`@anthropic-ai/claude-code`).
-4. Creates the standard workspace at `~/Claude Projects/` with `_archive/` and `_playground/`.
-5. Prints the next steps.
+A narrated, step-by-step setup (every line prefixed with `Jarvis`), idempotent and safe to
+re-run:
 
-The script is idempotent - re-running it skips anything already in place. It does not store
-secrets and does not push anything.
+1. Homebrew (pulls in Xcode Command Line Tools).
+2. Google Chrome, then a guided Google account + Chrome Remote Desktop setup for remote support.
+3. git user.name / user.email.
+4. The standard `~/claudeProjects/` workspace and `~/.claude/CLAUDE.md`.
+5. tmux + the `cc-/cn-/dcc-/dcn-` project aliases (and `tcc-` tmux variants), with a daily
+   launchd auto-refresh.
+6. Tailscale (with confirmation) for SSH between your devices.
+7. Claude Code.
+8. OpenClaw (with confirmation).
+9. A PATH check across everything installed, then a headless-access test.
+
+It reads prompts from your terminal, stores no secrets, and pushes nothing.
 
 ## Prereqs
 
-- macOS with administrator access (Homebrew install may prompt for your password).
+- macOS with administrator access (you'll be asked for your password).
 - An internet connection.
-
-## Run it
-
-Download and review first, then run:
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/iamfoehammer/install/main/mac/bootstrap.sh -o bootstrap.sh
-less bootstrap.sh        # review before running
-bash bootstrap.sh
-```
-
-Or, once you trust it, in one line:
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/iamfoehammer/install/main/mac/bootstrap.sh | bash
-```
 
 ## After it finishes
 
-- Open a new terminal so the updated `PATH` takes effect.
+- Open a new terminal so PATH changes take effect (or run `source ~/.zshrc`).
 - Run `claude` once to log in.
 - Continue with the file-structure and configuration steps from your onboarding guide.
