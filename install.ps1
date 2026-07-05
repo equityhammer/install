@@ -96,39 +96,29 @@ if (-not $wsl) {
     return
 }
 
-# --- WSL command exists; is a real Linux distro installed? ---
-# 'wsl -l -q' lists installed distro names, but wsl.exe emits UTF-16LE. Without
-# forcing the encoding, PowerShell reads "Ubuntu" as "U\0b\0u..." and a naive
-# NUL strip leaves just "U". Force UTF-8 output and strip any non-ASCII bytes so
-# the distro name survives intact.
-$env:WSL_UTF8 = '1'
-$distros = @()
-try {
-    $prevEnc = [Console]::OutputEncoding
-    try { [Console]::OutputEncoding = [System.Text.Encoding]::UTF8 } catch {}
-    $raw = & wsl.exe -l -q 2>$null
-    try { [Console]::OutputEncoding = $prevEnc } catch {}
-    $distros = $raw | ForEach-Object { ($_ -replace '[^\x20-\x7E]','').Trim() } | Where-Object { $_ -ne '' }
-} catch {
-    $distros = @()
-}
-$realDistros = $distros | Where-Object { $_ -notmatch 'docker-desktop' }
+# --- WSL command exists; is a real Linux distro installed and runnable? ---
+# Don't parse `wsl -l -q` for the name: wsl.exe emits UTF-16LE and PowerShell
+# mangles it (e.g. "Ubuntu" -> "U"). Instead, just try to run a trivial command
+# in the DEFAULT distro and check the exit code. No text parsing, nothing to
+# truncate. The handoff below also uses the default distro (no -d), so a bad
+# name can never break it.
+& wsl.exe -e true 2>$null | Out-Null
+$hasDistro = ($LASTEXITCODE -eq 0)
 
-if (-not $realDistros -or $realDistros.Count -eq 0) {
-    Write-Warn "WSL is present but no Linux distro is installed."
+if (-not $hasDistro) {
+    Write-Warn "WSL is present but no Linux distro is installed (or none is set as default)."
     Invoke-WslInstall "Install the default Ubuntu distro now? Requires a reboot."
     return
 }
 
-# --- We have a distro. Hand off to the universal install.sh inside WSL. ---
-$target = $realDistros[0]
-Write-Ok "WSL distro found: $target"
+# --- We have a working default distro. Hand off to install.sh inside it. ---
+Write-Ok "WSL is ready."
 Write-EH "Handing off to the Jarvis setup inside WSL now..."
 Write-EH ""
 
 # Run install.sh in an interactive login shell so its prompts (which read from
 # /dev/tty) work. install.sh detects Linux and runs the WSL bootstrap.
-& wsl.exe -d $target -e bash -lic "curl -fsSL '$EntryUrl' | bash"
+& wsl.exe -e bash -lic "curl -fsSL '$EntryUrl' | bash"
 
 $code = $LASTEXITCODE
 if ($code -ne 0) {
