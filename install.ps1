@@ -45,7 +45,48 @@ function Invoke-WslInstall {
     }
 }
 
+function Initialize-WindowsExtras {
+    # Nudge the client toward the modern shell: Windows Terminal + PowerShell 7.
+    # Detect both; offer to install whatever is missing via winget. Non-fatal.
+    $hasWT   = [bool](Get-Command wt.exe   -ErrorAction SilentlyContinue)
+    $hasPwsh = [bool](Get-Command pwsh.exe -ErrorAction SilentlyContinue)
+
+    if ($hasWT)   { Write-Ok   "Windows Terminal is installed." }
+    else          { Write-Warn "Windows Terminal is not installed." }
+    if ($hasPwsh) { Write-Ok   "PowerShell 7 is installed." }
+    else          { Write-Warn "PowerShell 7 (pwsh) is not installed. You are on $($PSVersionTable.PSVersion)." }
+
+    if ($hasWT -and $hasPwsh) { return }
+
+    $hasWinget = [bool](Get-Command winget.exe -ErrorAction SilentlyContinue)
+    if (-not $hasWinget) {
+        Write-EH "winget is not available, so I cannot auto-install. Install manually:"
+        if (-not $hasWT)   { Write-EH "  Windows Terminal: https://aka.ms/terminal (or the Microsoft Store)" }
+        if (-not $hasPwsh) { Write-EH "  PowerShell 7 (MSI): https://github.com/PowerShell/PowerShell/releases/latest" }
+        return
+    }
+
+    $ans = Read-Host "[EH] Install the missing tool(s) now via winget? (Y/n)"
+    if (-not ($ans -eq '' -or $ans -match '^[Yy]')) {
+        Write-EH "Skipping. You can install them later."
+        return
+    }
+
+    if (-not $hasWT) {
+        Write-EH "Installing Windows Terminal..."
+        winget install --id Microsoft.WindowsTerminal -e --source winget --accept-package-agreements --accept-source-agreements
+    }
+    if (-not $hasPwsh) {
+        # Microsoft.PowerShell is the MSI build (stable path), NOT the Store/MSIX
+        # package - deliberately, since MSIX breaks scheduled tasks and sshd.
+        Write-EH "Installing PowerShell 7 (MSI build)..."
+        winget install --id Microsoft.PowerShell -e --source winget --accept-package-agreements --accept-source-agreements
+    }
+    Write-EH "If a tool was just installed, reopen your terminal (ideally Windows Terminal running pwsh) before continuing."
+}
+
 Write-EH "Equity Hammer installer (Windows)"
+Initialize-WindowsExtras
 
 # --- Is the wsl command even present? ---
 $wsl = Get-Command wsl.exe -ErrorAction SilentlyContinue
