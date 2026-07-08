@@ -2,7 +2,7 @@
 #
 # One command for a Windows client, pasted into PowerShell:
 #
-#   irm https://raw.githubusercontent.com/iamfoehammer/install/main/install.ps1 | iex
+#   irm https://raw.githubusercontent.com/equityhammer/install/main/install.ps1 | iex
 #
 # What it does:
 #   1. Checks whether WSL is installed with at least one Linux distro.
@@ -18,7 +18,7 @@
 
 $ErrorActionPreference = 'Stop'
 
-$EntryUrl = 'https://raw.githubusercontent.com/iamfoehammer/install/main/install.sh'
+$EntryUrl = 'https://raw.githubusercontent.com/equityhammer/install/main/install.sh'
 
 function Write-EH   { param($m) Write-Host "[EH] $m" -ForegroundColor DarkYellow }
 function Write-Ok   { param($m) Write-Host "[EH] $m" -ForegroundColor Green }

@@ -9,20 +9,20 @@ Hammer agent dev box.
 up WSL if needed, then runs the setup inside it:
 
 ```powershell
-irm https://raw.githubusercontent.com/iamfoehammer/install/main/install.ps1 | iex
+irm https://raw.githubusercontent.com/equityhammer/install/main/install.ps1 | iex
 ```
 
 **If you already have a WSL/Ubuntu shell open**, use the universal Unix command (it
 auto-detects Linux and runs this script):
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/iamfoehammer/install/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/equityhammer/install/main/install.sh | bash
 ```
 
 ## Or run this bootstrap directly (from inside WSL)
 
 ```bash
-bash <(curl -fsSL https://raw.githubusercontent.com/iamfoehammer/install/main/wsl/bootstrap.sh)
+bash <(curl -fsSL https://raw.githubusercontent.com/equityhammer/install/main/wsl/bootstrap.sh)
 ```
 
 ## What it does

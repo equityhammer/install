@@ -22,7 +22,7 @@
 #  12. Done
 #
 # Usage on a fresh WSL Ubuntu terminal:
-#   bash <(curl -fsSL https://raw.githubusercontent.com/iamfoehammer/install/main/wsl/bootstrap.sh)
+#   bash <(curl -fsSL https://raw.githubusercontent.com/equityhammer/install/main/wsl/bootstrap.sh)
 #
 # Idempotent: re-running skips anything already in place.
 # Reads from /dev/tty so prompts work even when piped from curl.
@@ -48,7 +48,7 @@
 set -euo pipefail
 
 # === config (edit if URLs change) ===
-THEDOC_REPO_URL="https://github.com/iamfoehammer/thedoc.git"
+THEDOC_REPO_URL="https://github.com/equityhammer/thedoc.git"
 CLAUDE_PROJECTS_DIR="$HOME/claudeProjects"
 CONTACT_EMAIL="will@equityhammer.com"
 TAILSCALE_ADMIN_URL="https://login.tailscale.com/admin/users"
@@ -801,7 +801,7 @@ say "setup has a known bug (unbound dirs[@] when no project folders exist)."
 say ""
 say "${BOLD}When you are ready,${NC} run thedoc's bootstrap directly:"
 say ""
-say "  bash <(curl -fsSL https://raw.githubusercontent.com/iamfoehammer/thedoc/main/bootstrap.sh)"
+say "  bash <(curl -fsSL https://raw.githubusercontent.com/equityhammer/thedoc/main/bootstrap.sh)"
 say ""
 say "It will clone thedoc, install it, and walk you through creating the"
 say "doctor instances inside the claudeDoctor and openClawDoctor folders"

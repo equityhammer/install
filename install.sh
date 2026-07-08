@@ -3,7 +3,7 @@
 #
 # One command for Mac Terminal OR an already-open WSL/Ubuntu shell:
 #
-#   curl -fsSL https://raw.githubusercontent.com/iamfoehammer/install/main/install.sh | bash
+#   curl -fsSL https://raw.githubusercontent.com/equityhammer/install/main/install.sh | bash
 #
 # It detects the OS and hands off to the matching Jarvis bootstrap:
 #   macOS  -> mac/bootstrap.sh
@@ -14,7 +14,7 @@
 
 set -euo pipefail
 
-BASE="https://raw.githubusercontent.com/iamfoehammer/install/main"
+BASE="https://raw.githubusercontent.com/equityhammer/install/main"
 
 os="$(uname -s)"
 case "$os" in

@@ -8,13 +8,13 @@ dev box.
 From the repo root command, which auto-detects macOS and runs this script:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/iamfoehammer/install/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/equityhammer/install/main/install.sh | bash
 ```
 
 ## Or run this bootstrap directly
 
 ```bash
-bash <(curl -fsSL https://raw.githubusercontent.com/iamfoehammer/install/main/mac/bootstrap.sh)
+bash <(curl -fsSL https://raw.githubusercontent.com/equityhammer/install/main/mac/bootstrap.sh)
 ```
 
 ## What it does

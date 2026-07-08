@@ -13,13 +13,13 @@ There is a single entry point for each world. Each one auto-detects the rest.
 **Mac, or an already-open WSL/Ubuntu terminal:**
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/iamfoehammer/install/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/equityhammer/install/main/install.sh | bash
 ```
 
 **Windows (paste into PowerShell):**
 
 ```powershell
-irm https://raw.githubusercontent.com/iamfoehammer/install/main/install.ps1 | iex
+irm https://raw.githubusercontent.com/equityhammer/install/main/install.ps1 | iex
 ```
 
 Why two commands and not literally one: PowerShell has no `bash`, and a Mac has no
