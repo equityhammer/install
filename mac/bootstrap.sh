@@ -7,7 +7,7 @@
 #   3. Manual prompt: sign in to (or create) the agent's Google account,
 #      then set up Chrome Remote Desktop so the box can be supported remotely
 #   4. git user.name / user.email (asks if missing)
-#   5. ~/claudeProjects/ folder with claudeDoctor and openClawDoctor subfolders
+#   5. ~/agentProjects/ folder with claudeDoctor and openClawDoctor subfolders
 #   6. thedoc + doctors (informational; install via thedoc's own bootstrap)
 #   7. tmux + project aliases (cc-/cn-/dcc-/dcn- direct, tcc-/tcn-/tdcc-/tdcn- in tmux)
 #   8. Tailscale (required for agent building, asks for confirmation)
@@ -26,7 +26,9 @@ set -euo pipefail
 
 # === config (edit if URLs change) ===
 THEDOC_REPO_URL="https://github.com/equityhammer/thedoc.git"
-CLAUDE_PROJECTS_DIR="$HOME/claudeProjects"
+AGENT_PROJECTS_DIR="$HOME/agentProjects"
+# Older installs used ~/claudeProjects. Never move it; link agentProjects to it instead.
+LEGACY_PROJECTS_DIR="$HOME/claudeProjects"
 CONTACT_EMAIL="will@equityhammer.com"
 REMOTE_DESKTOP_URL="https://remotedesktop.google.com/access"
 TAILSCALE_ADMIN_URL="https://login.tailscale.com/admin/users"
@@ -583,21 +585,29 @@ else
 fi
 verify_path git
 
-press_enter "Press enter to continue, sir; next we create the claudeProjects folder layout"
+press_enter "Press enter to continue, sir; next we create the agentProjects folder layout"
 
-# === 5. claudeProjects folder layout ===
-hd "Step 5: ~/claudeProjects layout"
+# An older install may already have ~/claudeProjects. Point ~/agentProjects at
+# it rather than creating a second, empty workspace. Runs even when the
+# layout step below was completed on an earlier run.
+if [[ ! -e "$AGENT_PROJECTS_DIR" && ! -L "$AGENT_PROJECTS_DIR" && -d "$LEGACY_PROJECTS_DIR" ]]; then
+  ln -s "$LEGACY_PROJECTS_DIR" "$AGENT_PROJECTS_DIR"
+  ok "Linked ~/agentProjects to your existing ~/claudeProjects (nothing moved)"
+fi
+
+# === 5. agentProjects folder layout ===
+hd "Step 5: ~/agentProjects layout"
 say ""
 say "I'm about to create a folder structure on this Mac:"
 say ""
-say "  ~/claudeProjects/                  (your top-level agent workspace)"
-say "  ~/claudeProjects/claudeDoctor/     (Claude Code troubleshooting tools)"
-say "  ~/claudeProjects/openClawDoctor/   (OpenClaw troubleshooting tools)"
+say "  ~/agentProjects/                   (your top-level agent workspace)"
+say "  ~/agentProjects/claudeDoctor/      (Claude Code troubleshooting tools)"
+say "  ~/agentProjects/openClawDoctor/    (OpenClaw troubleshooting tools)"
 say "  ~/.claude/CLAUDE.md                (global instructions Claude Code"
 say "                                      reads at every session start)"
 say ""
 say "${BOLD}Why this layout:${NC} every project we build for you will live"
-say "under ~/claudeProjects/. Keeping the structure standard means scripts,"
+say "under ~/agentProjects/. Keeping the structure standard means scripts,"
 say "prompts, and tooling can find what they need with no per-machine config."
 say ""
 say "${BOLD}The ~/.claude/ folder${NC} is where Claude Code keeps user-level"
@@ -608,16 +618,16 @@ say ""
 say "Creating now..."
 say ""
 
-mkdir -p "$CLAUDE_PROJECTS_DIR/claudeDoctor" "$CLAUDE_PROJECTS_DIR/openClawDoctor"
+mkdir -p "$AGENT_PROJECTS_DIR/claudeDoctor" "$AGENT_PROJECTS_DIR/openClawDoctor"
 mkdir -p "$HOME/.claude"
 [[ -f "$HOME/.claude/CLAUDE.md" ]] || : > "$HOME/.claude/CLAUDE.md"
-ok "Created $CLAUDE_PROJECTS_DIR/"
-ok "Created $CLAUDE_PROJECTS_DIR/claudeDoctor/"
-ok "Created $CLAUDE_PROJECTS_DIR/openClawDoctor/"
+ok "Created $AGENT_PROJECTS_DIR/"
+ok "Created $AGENT_PROJECTS_DIR/claudeDoctor/"
+ok "Created $AGENT_PROJECTS_DIR/openClawDoctor/"
 ok "Created ~/.claude/CLAUDE.md (empty for now; we will fill it in later)"
 say ""
 say "${BOLD}If you want to recreate this layout yourself later:${NC}"
-say "  mkdir -p ~/claudeProjects/{claudeDoctor,openClawDoctor}"
+say "  mkdir -p ~/agentProjects/{claudeDoctor,openClawDoctor}"
 say "  mkdir -p ~/.claude && touch ~/.claude/CLAUDE.md"
 
 press_enter "Press enter to continue, sir; next is a quick note about thedoc and the doctor agents"
@@ -650,7 +660,7 @@ press_enter "Press enter to continue, sir; next we'll install tmux and the proje
 hd "Step 7: tmux and project aliases"
 say ""
 say "${BOLD}Setting up project aliases.${NC} For every folder under"
-say "~/claudeProjects, the generator creates eight short shell aliases"
+say "~/agentProjects, the generator creates eight short shell aliases"
 say "in two flavors:"
 say ""
 say "${BOLD}Direct (current terminal, no tmux):${NC}"
@@ -670,7 +680,7 @@ say "fastest. When you SSH in from a phone, the tmux ones survive network"
 say "blips, so you do not lose your session if the connection drops or the"
 say "phone screen sleeps. tmux also lets one session hold many projects."
 say ""
-say "Example: a folder ~/claudeProjects/claudeDoctor produces both"
+say "Example: a folder ~/agentProjects/claudeDoctor produces both"
 say "cc-claudeDoctor and tcc-claudeDoctor (and the cn/dcc/dcn variants)."
 say ""
 say "${BOLD}First, install tmux${NC} (the terminal multiplexer the aliases"
@@ -698,7 +708,7 @@ mkdir -p "$HOME/.local/bin"
 
 cat > "$ALIAS_GEN_DST" << 'GENERATOR_EOF'
 #!/usr/bin/env bash
-# Generate Claude Code aliases for each project folder under ~/claudeProjects/.
+# Generate Claude Code aliases for each project folder under ~/agentProjects/.
 #
 # Direct (current terminal):     cc-<p>, cn-<p>, dcc-<p>, dcn-<p>
 # Inside tmux session 'claude':  tcc-<p>, tcn-<p>, tdcc-<p>, tdcn-<p>
@@ -707,7 +717,7 @@ cat > "$ALIAS_GEN_DST" << 'GENERATOR_EOF'
 # *cn-* / *tcn-* = new conversation
 # d-prefix       = --dangerously-skip-permissions
 
-PROJECTS_DIR="$HOME/claudeProjects"
+PROJECTS_DIR="$HOME/agentProjects"
 ALIAS_FILE="$HOME/.cc-project-aliases"
 : > "$ALIAS_FILE"
 
@@ -1005,7 +1015,7 @@ else
 fi
 
 say ""
-say "${BOLD}When you create a new project folder under ~/claudeProjects:${NC}"
+say "${BOLD}When you create a new project folder under ~/agentProjects:${NC}"
 say "  type ${BOLD}cc-refresh${NC} to regenerate aliases right now"
 say "  (or wait until tomorrow morning; the LaunchAgent does it daily)"
 say ""
@@ -1369,12 +1379,12 @@ say ""
 
 # === Done ===
 hd "Done"
-say "Layout ready under: $CLAUDE_PROJECTS_DIR"
+say "Layout ready under: $AGENT_PROJECTS_DIR"
 say "  - claudeDoctor/         (Claude Code Doctor instance)"
 say "  - openClawDoctor/       (OpenClaw Doctor instance)"
-[[ -d "$CLAUDE_PROJECTS_DIR/thedoc" ]] && say "  - thedoc/               (cloned framework)"
+[[ -d "$AGENT_PROJECTS_DIR/thedoc" ]] && say "  - thedoc/               (cloned framework)"
 say ""
-say "Project aliases generated (per folder under claudeProjects):"
+say "Project aliases generated (per folder under agentProjects):"
 say "  cc-<project>    continue last Claude Code session in that project"
 say "  cn-<project>    start a new Claude Code session in that project"
 say "  dcc-<project>   continue, with --dangerously-skip-permissions"

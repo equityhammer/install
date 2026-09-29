@@ -25,7 +25,7 @@ re-run:
 1. Homebrew (pulls in Xcode Command Line Tools).
 2. Google Chrome, then a guided Google account + Chrome Remote Desktop setup for remote support.
 3. git user.name / user.email.
-4. The standard `~/claudeProjects/` workspace and `~/.claude/CLAUDE.md`.
+4. The standard `~/agentProjects/` workspace and `~/.claude/CLAUDE.md`.
 5. tmux + the `cc-/cn-/dcc-/dcn-` project aliases (and `tcc-` tmux variants), with a daily
    launchd auto-refresh.
 6. Tailscale (with confirmation) for SSH between your devices.

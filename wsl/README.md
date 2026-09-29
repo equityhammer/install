@@ -33,7 +33,7 @@ checkpoint/resume so a re-run can skip finished steps:
 1. apt update + base tooling (curl, git, build-essential, ca-certificates, tmux, perl).
 2. git user.name / user.email.
 3. SSH check - confirms you can `ssh <user>@localhost` from your Windows host.
-4. The standard `~/claudeProjects/` workspace and `~/.claude/CLAUDE.md`.
+4. The standard `~/agentProjects/` workspace and `~/.claude/CLAUDE.md`.
 5. The `cc-/cn-/dcc-/dcn-` project aliases (and `tcc-` tmux variants), with a daily
    systemd user-timer auto-refresh.
 6. Tailscale (with confirmation) for SSH between your devices.
