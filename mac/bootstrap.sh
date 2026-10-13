@@ -967,6 +967,69 @@ else
   warn "  launchctl bootstrap gui/\$(id -u) $LAUNCH_PLIST"
 fi
 
+# ---------------------------------------------------------------------------
+# Templates report. Once a day this machine tells the template publisher
+# which templates from its own <slug>-templates repo it has adopted.
+# templates-check reads that clone plus ~/.claude/templates-adopted, and
+# --report files one GitHub issue "Adoption report: <host>" on the repo,
+# edited in place on later runs. Read access to the repo is enough.
+# Harmless before the clone exists: it exits non-zero and says so in the log.
+# ---------------------------------------------------------------------------
+say ""
+say "${BOLD}Setting up the daily templates report.${NC} Each morning at 06:10 this"
+say "machine reports which templates from its templates repo are installed, as"
+say "one issue on that repo, so the team can see what still needs setting up."
+TC_DST="$HOME/.local/bin/templates-check"
+if curl -fsSL "https://raw.githubusercontent.com/equityhammer/install/main/templates-check" -o "$TC_DST"; then
+  chmod +x "$TC_DST"
+  ok "templates-check installed at $TC_DST"
+else
+  warn "Could not download templates-check. Skipping the templates report."
+fi
+if [ -x "$TC_DST" ]; then
+  REPORT_PLIST="$HOME/Library/LaunchAgents/com.equityhammer.templates-report.plist"
+  cat > "$REPORT_PLIST" << PLIST_EOF
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.equityhammer.templates-report</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>${TC_DST}</string>
+        <string>--report</string>
+    </array>
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>${HOME}/.local/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+    </dict>
+    <key>StartCalendarInterval</key>
+    <dict>
+        <key>Hour</key>
+        <integer>6</integer>
+        <key>Minute</key>
+        <integer>10</integer>
+    </dict>
+    <key>RunAtLoad</key>
+    <false/>
+    <key>StandardOutPath</key>
+    <string>${HOME}/.local/bin/templates-report.log</string>
+    <key>StandardErrorPath</key>
+    <string>${HOME}/.local/bin/templates-report.log</string>
+</dict>
+</plist>
+PLIST_EOF
+  launchctl bootout "gui/$(id -u)" "$REPORT_PLIST" 2>/dev/null || true
+  if launchctl bootstrap "gui/$(id -u)" "$REPORT_PLIST" 2>/dev/null; then
+    ok "templates-report LaunchAgent loaded; runs daily at 6:10 AM."
+  else
+    warn "Could not load the templates-report LaunchAgent. Reload it manually:"
+    warn "  launchctl bootstrap gui/\$(id -u) $REPORT_PLIST"
+  fi
+fi
+
 say ""
 say "${BOLD}One last thing in this step: phone access.${NC}"
 say ""

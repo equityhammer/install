@@ -49,3 +49,12 @@ doors.
 
 You can still run a platform bootstrap directly if you already know which you want; see the
 per-folder README. The two commands above are the recommended path.
+
+## templates-check
+
+`templates-check` is vendored here from `equityhammer/tools` (private) so a client machine
+can fetch it over a raw URL. Both bootstraps install it to `~/.local/bin` and schedule
+`templates-check --report` daily at 06:10, which files one issue titled
+`Adoption report: <host>` on the machine's own `<slug>-templates` repo. That issue is how the
+template publisher sees what a machine has installed. Change the script in `tools` and copy
+it here; do not edit this copy by hand.

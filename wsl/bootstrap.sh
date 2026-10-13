@@ -1145,6 +1145,57 @@ else
   warn "manually after adding new project folders, or rely on 'cc-refresh'."
 fi
 
+# ---------------------------------------------------------------------------
+# Templates report. Once a day this machine tells the template publisher
+# which templates from its own <slug>-templates repo it has adopted.
+# templates-check reads that clone plus ~/.claude/templates-adopted, and
+# --report files one GitHub issue "Adoption report: <host>" on the repo,
+# edited in place on later runs. Read access to the repo is enough.
+# Harmless before the clone exists: it exits non-zero and says so in the log.
+# ---------------------------------------------------------------------------
+say ""
+say "${BOLD}Setting up the daily templates report.${NC} Each morning at 06:10 this"
+say "machine reports which templates from its templates repo are installed, as"
+say "one issue on that repo, so the team can see what still needs setting up."
+TC_DST="$HOME/.local/bin/templates-check"
+if curl -fsSL "https://raw.githubusercontent.com/equityhammer/install/main/templates-check" -o "$TC_DST"; then
+  chmod +x "$TC_DST"
+  ok "templates-check installed at $TC_DST"
+else
+  warn "Could not download templates-check. Skipping the templates report."
+fi
+if [ -x "$TC_DST" ] && command -v systemctl >/dev/null 2>&1; then
+  cat > "$SYSTEMD_USER_DIR/templates-report.service" << SERVICE_EOF
+[Unit]
+Description=Report adopted templates to the publisher as a GitHub issue
+
+[Service]
+Type=oneshot
+Environment=PATH=${HOME}/.local/bin:/usr/local/bin:/usr/bin:/bin
+ExecStart=${TC_DST} --report
+StandardOutput=append:${HOME}/.local/bin/templates-report.log
+StandardError=append:${HOME}/.local/bin/templates-report.log
+SERVICE_EOF
+  cat > "$SYSTEMD_USER_DIR/templates-report.timer" << TIMER_EOF
+[Unit]
+Description=Daily templates report to the publisher
+
+[Timer]
+OnCalendar=*-*-* 06:10:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target
+TIMER_EOF
+  systemctl --user daemon-reload 2>/dev/null || true
+  if systemctl --user enable --now templates-report.timer 2>/dev/null; then
+    ok "templates-report.timer enabled; first fire at 06:10 local time."
+  else
+    warn "Could not enable templates-report.timer. After next login:"
+    warn "  systemctl --user enable --now templates-report.timer"
+  fi
+fi
+
 say ""
 say "${BOLD}One last thing in this step: phone access.${NC}"
 say ""

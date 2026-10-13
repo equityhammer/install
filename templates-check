@@ -1,0 +1,342 @@
+#!/usr/bin/env bash
+# templates-check - report which templates this machine has been offered and
+# which it has actually adopted.
+#
+# Finds this machine's <slug>-templates clone by its git remote, not by a fixed
+# path, so it works wherever the clone already lives. Fetches, says how many
+# commits are waiting, then lists every template folder as adopted, skipped, or
+# unadopted, with the exact command to adopt the ones that are neither.
+#
+# Read-only against the clone: it fetches, it never pulls, checks out, or merges.
+#
+# --report sends the same table to the publisher as one GitHub issue on this
+# machine's own templates repo, titled "Adoption report: <hostname>", created
+# once and edited in place after that. Read access on the repo is enough to
+# file an issue, which is why it is an issue and not a push. The publisher's
+# client-templates-check dashboard reads those issues; nothing else can see
+# what a client machine has installed.
+#
+# Portable to bash 3.2 and BSD userland (macOS). No readlink -f, stat -c,
+# sed -i, grep -P, date -Iseconds, or GNU find predicates.
+set -euo pipefail
+
+ledger="${TEMPLATES_LEDGER:-$HOME/.claude/templates-adopted}"
+bindir="${TEMPLATES_BINDIR:-$HOME/.local/bin}"
+do_fetch=1
+verbose=0
+do_report=0
+
+usage() {
+  cat <<'EOF'
+usage: templates-check [--no-fetch] [--verbose] [--report] [clone-path]
+
+  --no-fetch   Skip "git fetch"; report on what is already in the clone.
+  --verbose    Also print where the clone and the ledger were found.
+  --report     Also file (or update) a GitHub issue "Adoption report: <host>"
+               on this machine's templates repo with the table below, so the
+               publisher can see what is installed here. Needs gh signed in
+               as the account that has access to the repo.
+  clone-path   Use this clone instead of searching for one.
+
+Environment:
+  TEMPLATES_CLONE    Path to the clone, same as passing it positionally.
+  TEMPLATES_LEDGER   Adoption ledger. Default ~/.claude/templates-adopted.
+  TEMPLATES_BINDIR   Checked for symlinks into the clone. Default ~/.local/bin.
+
+Exit status is 0 whether or not anything is unadopted, so this is safe to run
+from a hook or a login shell. Use the count in the summary line to decide.
+EOF
+}
+
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --no-fetch) do_fetch=0; shift ;;
+    --verbose)  verbose=1; shift ;;
+    --report)   do_report=1; shift ;;
+    -h|--help)  usage; exit 0 ;;
+    -*)         echo "templates-check: unknown option $1" >&2; usage >&2; exit 2 ;;
+    *)          TEMPLATES_CLONE="$1"; shift ;;
+  esac
+done
+
+# Absolute path of a directory without readlink -f, which BSD lacks.
+abspath() { (cd "$1" 2>/dev/null && pwd -P) || return 1; }
+
+# A clone qualifies if its origin is a 10ofyou <something>-templates repo.
+# all-templates is the master library, not a machine's own repo, so skip it.
+is_templates_clone() {
+  [ -d "$1/.git" ] || return 1
+  url=$(git -C "$1" remote get-url origin 2>/dev/null) || return 1
+  case "$url" in
+    *10ofyou/*-templates*) ;;
+    *) return 1 ;;
+  esac
+  case "$url" in
+    *10ofyou/all-templates*) return 1 ;;
+  esac
+  return 0
+}
+
+# This machine's own slug, declared rather than guessed. A machine that publishes
+# templates (the one holding all-templates) has every client's clone side by side,
+# so "the first clone found" is the wrong answer there.
+slugfile="${TEMPLATES_SLUGFILE:-$HOME/.claude/templates-slug}"
+want_slug="${TEMPLATES_SLUG:-}"
+if [ -z "$want_slug" ] && [ -f "$slugfile" ]; then
+  want_slug=$(awk '/^[ \t]*#/ { next } NF { print $1; exit }' "$slugfile")
+fi
+
+# Bounded search of the places a clone plausibly lives.
+clone_roots() {
+  echo "$HOME/agentProjects/clientFacing/client-templates"
+  echo "$HOME/claudeProjects/clientFacing/client-templates"
+  echo "$HOME/agentProjects/_templates"
+  echo "$HOME/agentProjects"
+  echo "$HOME/templates"
+  echo "$HOME"
+}
+
+find_clone() {
+  if [ -n "${TEMPLATES_CLONE:-}" ]; then
+    if is_templates_clone "$TEMPLATES_CLONE"; then abspath "$TEMPLATES_CLONE"; return 0; fi
+    echo "templates-check: $TEMPLATES_CLONE is not a 10ofyou <slug>-templates clone" >&2
+    return 1
+  fi
+  # With a declared slug, take only that clone, wherever it sits.
+  if [ -n "$want_slug" ]; then
+    clone_roots | while IFS= read -r root; do
+      [ -d "$root" ] || continue
+      cand="$root/$want_slug-templates"
+      if is_templates_clone "$cand"; then abspath "$cand"; break; fi
+    done
+    return 0
+  fi
+  # No slug declared: acceptable only when this machine holds exactly one clone.
+
+  clone_roots | while IFS= read -r root; do
+    [ -d "$root" ] || continue
+    for cand in "$root"/*-templates; do
+      [ -d "$cand" ] || continue
+      is_templates_clone "$cand" || continue
+      abspath "$cand"
+    done
+  done | sort -u
+  return 0
+}
+
+candidates=$(find_clone)
+clone=""
+if [ -n "${TEMPLATES_CLONE:-}" ] || [ -n "$want_slug" ]; then
+  clone=$(printf '%s\n' "$candidates" | head -1)
+else
+  count=$(printf '%s\n' "$candidates" | grep -c . || true)
+  if [ "$count" = "1" ]; then
+    clone=$(printf '%s\n' "$candidates" | head -1)
+  elif [ "$count" != "0" ]; then
+    {
+      echo "templates-check: this machine holds $count templates clones and has not declared"
+      echo "which one is its own. That is normal on the machine that publishes templates."
+      echo
+      echo "Declare the slug once:"
+      echo "  echo <slug> > $slugfile"
+      echo
+      echo "Clones found:"
+      printf '%s\n' "$candidates" | sed 's/^/  /'
+    } >&2
+    exit 2
+  fi
+fi
+
+if [ -z "$clone" ]; then
+  cat >&2 <<EOF
+templates-check: no ${want_slug:+$want_slug-}templates clone found on this machine.
+
+Every machine has exactly one of its own. If you know the slug:
+
+  echo <slug> > $slugfile
+  gh repo clone 10ofyou/<slug>-templates ~/agentProjects/_templates/<slug>-templates
+
+Re-run templates-check afterwards, or pass the clone path directly.
+EOF
+  exit 1
+fi
+
+origin=$(git -C "$clone" remote get-url origin)
+# 10ofyou/example-co-templates(.git) -> example-co
+slug=$(basename "$origin"); slug=${slug%.git}; slug=${slug%-templates}
+
+if [ "$verbose" -eq 1 ]; then
+  echo "clone:  $clone"
+  echo "origin: $origin"
+  echo "ledger: $ledger"
+  echo
+fi
+
+behind="?"
+if [ "$do_fetch" -eq 1 ]; then
+  if git -C "$clone" fetch --quiet 2>/dev/null; then
+    behind=$(git -C "$clone" rev-list --count 'HEAD..@{u}' 2>/dev/null || echo "?")
+  else
+    behind="unreachable"
+  fi
+else
+  behind=$(git -C "$clone" rev-list --count 'HEAD..@{u}' 2>/dev/null || echo "?")
+fi
+
+# Ledger lookup. Format, one template per line, "#" comments allowed:
+#   <template> <adopted|skipped> <YYYY-MM-DD> <free text note>
+# Prints "<status><tab><note>" for $tpl, or nothing when it is not listed.
+ledger_lookup() {
+  [ -f "$ledger" ] || return 0
+  awk -v want="$tpl" '
+    /^[ \t]*#/ { next }
+    NF == 0    { next }
+    $1 == want {
+      st = (NF >= 2 ? $2 : "adopted")
+      note = ""
+      for (i = 4; i <= NF; i++) note = note (note == "" ? "" : " ") $i
+      print st "\t" note
+      exit
+    }
+  ' "$ledger"
+}
+
+# A symlink in bindir pointing into the template counts as adopted even when the
+# ledger has not caught up. Single-level readlink only, which is all the
+# symlink-deploy pattern needs and all BSD readlink gives.
+symlinked_from_bin() {
+  [ -d "$bindir" ] || return 1
+  for f in "$bindir"/*; do
+    [ -L "$f" ] || continue
+    t=$(readlink "$f" 2>/dev/null) || continue
+    case "$t" in
+      "$clone/$tpl"/*|"$clone/$tpl") echo "$f"; return 0 ;;
+    esac
+  done
+  return 1
+}
+
+printf '%-18s %-12s %s\n' "TEMPLATE" "STATUS" "EVIDENCE OR NEXT STEP"
+printf '%-18s %-12s %s\n' "------------------" "------------" "---------------------"
+
+n_total=0; n_unadopted=0; n_undeclared=0
+suggestions=""
+report_lines=""   # one ledger-format line per template, for --report
+today=$(date +%Y-%m-%d)
+
+for path in "$clone"/*; do
+  [ -d "$path" ] || continue
+  tpl=$(basename "$path")
+  case "$tpl" in .*) continue ;; esac
+  n_total=$((n_total + 1))
+
+  entry=$(ledger_lookup)
+  st=""; note=""
+  if [ -n "$entry" ]; then
+    st=$(printf '%s' "$entry" | cut -f1)
+    note=$(printf '%s' "$entry" | cut -f2)
+  fi
+  link=$(symlinked_from_bin || true)
+
+  if [ -n "$link" ] && [ -z "$st" ]; then
+    n_undeclared=$((n_undeclared + 1))
+    printf '%-18s %-12s %s\n' "$tpl" "adopted*" "$link, not in ledger"
+    suggestions="$suggestions
+  echo '$tpl adopted $today symlinked at $link' >> $ledger"
+    report_lines="$report_lines
+$tpl adopted $today symlinked at $link, not in ledger"
+  elif [ -n "$link" ]; then
+    printf '%-18s %-12s %s\n' "$tpl" "$st" "$link"
+    report_lines="$report_lines
+$tpl $st $today $link"
+  elif [ "$st" = "adopted" ]; then
+    printf '%-18s %-12s %s\n' "$tpl" "adopted" "$note"
+    report_lines="$report_lines
+$tpl adopted $today $note"
+  elif [ "$st" = "skipped" ]; then
+    printf '%-18s %-12s %s\n' "$tpl" "skipped" "$note"
+    report_lines="$report_lines
+$tpl skipped $today $note"
+  else
+    n_unadopted=$((n_unadopted + 1))
+    report_lines="$report_lines
+$tpl unadopted - "
+    if [ -f "$path/install.sh" ]; then
+      printf '%-18s %-12s %s\n' "$tpl" "UNADOPTED" "has install.sh"
+      suggestions="$suggestions
+  $path/install.sh            # then record it in $ledger"
+    else
+      printf '%-18s %-12s %s\n' "$tpl" "UNADOPTED" "no installer, copy it into your workspace"
+      suggestions="$suggestions
+  cp -r $path ~/agentProjects/$tpl   # then customize the copy"
+    fi
+  fi
+done
+
+echo
+echo "machine slug: $slug     templates: $n_total     unadopted: $n_unadopted     commits waiting: $behind"
+
+if [ "$behind" != "0" ] && [ "$behind" != "?" ] && [ "$behind" != "unreachable" ]; then
+  echo
+  echo "$behind commit(s) waiting upstream. Get them with:"
+  echo "  git -C $clone pull"
+fi
+if [ "$behind" = "unreachable" ]; then
+  echo
+  echo "Could not fetch. Check network and that gh auth covers 10ofyou/$slug-templates."
+fi
+
+if [ -n "$suggestions" ]; then
+  echo
+  echo "Suggested next steps:$suggestions"
+fi
+
+if [ "$n_unadopted" -eq 0 ] && [ "$n_undeclared" -eq 0 ]; then
+  echo
+  echo "Every template is accounted for. Nothing to do."
+fi
+
+# --report: file the table as an issue on this machine's own templates repo.
+# One issue per machine, found by exact title, edited in place on later runs.
+# The body carries the ledger lines inside a code fence; the publisher's
+# dashboard parses "<template> <status> <date> <note>" out of it.
+if [ "$do_report" -eq 1 ]; then
+  host=$(hostname 2>/dev/null || echo unknown-host)
+  # owner/repo from the origin url, https or ssh, with or without .git
+  repo=$(printf '%s' "$origin" | sed -e 's#^.*github\.com[:/]##' -e 's#\.git$##' -e 's#/*$##')
+  title="Adoption report: $host"
+  body=$(mktemp "${TMPDIR:-/tmp}/templates-report.XXXXXX")
+  {
+    echo "Filed by \`templates-check --report\` on **$host** (slug \`$slug\`), $today."
+    echo "Clone: \`$clone\`. Commits waiting upstream: $behind."
+    echo
+    echo "This issue is a status report, not a request. It is edited in place each"
+    echo "time the check runs. Lines are \`<template> <adopted|skipped|unadopted> <date> <note>\`."
+    echo
+    echo '```'
+    printf '%s\n' "$report_lines" | sed '/^$/d'
+    echo '```'
+  } > "$body"
+  echo
+  if ! command -v gh >/dev/null 2>&1; then
+    echo "--report: gh is not installed, cannot file the issue. Table saved at $body"
+  else
+    existing=$(gh issue list -R "$repo" --state open --search "\"$title\" in:title" \
+                 --json number,title --jq ".[] | select(.title == \"$title\") | .number" 2>/dev/null | head -1)
+    if [ -n "$existing" ]; then
+      if gh issue edit "$existing" -R "$repo" --body-file "$body" >/dev/null 2>&1; then
+        echo "--report: updated issue #$existing on $repo ($title)"
+      else
+        echo "--report: could not edit issue #$existing on $repo. Table saved at $body"
+      fi
+    else
+      if url=$(gh issue create -R "$repo" --title "$title" --body-file "$body" 2>/dev/null); then
+        echo "--report: filed $url"
+      else
+        echo "--report: could not create an issue on $repo. Is gh signed in as an account with"
+        echo "          access to it? Table saved at $body"
+      fi
+    fi
+    if [ -n "$existing" ] || [ -n "${url:-}" ]; then rm -f "$body"; fi
+  fi
+fi
