@@ -29,8 +29,13 @@ function Invoke-WslInstall {
     param($Prompt)
     $ans = Read-Host "[EH] $Prompt (Y/n)"
     if ($ans -eq '' -or $ans -match '^[Yy]') {
-        Write-EH "Launching 'wsl --install' in an elevated window..."
-        Start-Process -FilePath 'powershell.exe' -Verb RunAs -ArgumentList '-NoExit','-Command','wsl --install'
+        # Use an explicit distro name rather than bare 'wsl --install'. On some
+        # wsl.exe builds (observed on Windows 10 22H2 / build 19045) the
+        # no-argument form silently no-ops and just prints the help text
+        # instead of installing anything, while 'wsl --install -d Ubuntu'
+        # works reliably.
+        Write-EH "Launching 'wsl --install -d Ubuntu' in an elevated window..."
+        Start-Process -FilePath 'powershell.exe' -Verb RunAs -ArgumentList '-NoExit','-Command','wsl --install -d Ubuntu'
         Write-EH ""
         Write-EH "Next steps, in order:"
         Write-EH "  1. Approve the User Account Control (UAC) prompt."
@@ -40,7 +45,7 @@ function Invoke-WslInstall {
         Write-EH "  4. Open PowerShell again and paste the SAME line you just"
         Write-EH "     ran. This time it launches the setup inside WSL."
     } else {
-        Write-EH "No problem. Install WSL yourself later with:  wsl --install"
+        Write-EH "No problem. Install WSL yourself later with:  wsl --install -d Ubuntu"
         Write-EH "Then re-run this line."
     }
 }
