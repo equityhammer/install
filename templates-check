@@ -124,6 +124,21 @@ find_clone() {
   return 0
 }
 
+# Two real workspace folders means some command (usually a clone into
+# ~/agentProjects/... on a machine without the link) invented a second one.
+# Warn loudly but keep going; the check itself still works.
+if [ -d "$HOME/agentProjects" ] && [ ! -L "$HOME/agentProjects" ] \
+   && [ -d "$HOME/claudeProjects" ] && [ ! -L "$HOME/claudeProjects" ]; then
+  {
+    echo "templates-check: WARNING: ~/agentProjects and ~/claudeProjects are BOTH real"
+    echo "directories. The convention is one real workspace plus a link to it, so one"
+    echo "of these was created by accident and the workspace is split in two."
+    echo "Fix: move the stray folder's contents into the real workspace, remove the"
+    echo "empty folder, then:  ln -s ~/claudeProjects ~/agentProjects"
+    echo
+  } >&2
+fi
+
 candidates=$(find_clone)
 clone=""
 if [ -n "${TEMPLATES_CLONE:-}" ] || [ -n "$want_slug" ]; then
@@ -154,7 +169,12 @@ templates-check: no ${want_slug:+$want_slug-}templates clone found on this machi
 Every machine has exactly one of its own. If you know the slug:
 
   echo <slug> > $slugfile
+  [ -e ~/agentProjects ] || ln -s <your real workspace folder> ~/agentProjects
   gh repo clone 10ofyou/<slug>-templates ~/agentProjects/_templates/<slug>-templates
+
+~/agentProjects must be your real workspace folder or a link to it. If the link is
+missing, create it BEFORE cloning; otherwise the clone silently creates a second
+real folder there and splits the workspace in two.
 
 Re-run templates-check afterwards, or pass the clone path directly.
 EOF
